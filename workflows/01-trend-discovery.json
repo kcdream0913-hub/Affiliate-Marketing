@@ -1,0 +1,78 @@
+{
+  "name": "01 Trend Discovery",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] }
+      },
+      "name": "Every 6h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/clockworks~tiktok-trend-scraper/run-sync-get-dataset-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": { "timeout": 120000 }
+      },
+      "name": "Apify TikTok Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": { "httpHeaderAuth": { "name": "Apify Header Auth" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({model: 'google/gemini-2.5-flash-lite', messages: [{role:'system', content:'Rank these trend signals 0-100 for short-form affiliate potential. For each return JSON {theme, score, rationale, demand_velocity (0-1), suggested_category}. Penalize health/income themes (compliance risk). Output a JSON array only.'}, {role:'user', content: JSON.stringify($json)}]}) }}",
+        "options": {}
+      },
+      "name": "LLM Rank Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": { "httpHeaderAuth": { "name": "OpenRouter Header Auth" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.choices?.[0]?.message?.content ?? '[]';\nlet trends;\ntry { trends = JSON.parse(content.replace(/^```json?|```$/g, '').trim()); } catch (e) { trends = []; }\nreturn trends.filter(t => t.score >= 60).map(t => ({ json: t }));"
+      },
+      "name": "Parse + Filter >=60",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/agent_journal",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({sprint: 'live', agent: 'trend-discovery', action: 'trend_ranked', decision: $json.theme, metric: $json}) }}",
+        "options": {}
+      },
+      "name": "Write Trends to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "credentials": { "httpHeaderAuth": { "name": "Supabase Service Auth" } }
+    }
+  ],
+  "connections": {
+    "Every 6h": { "main": [[{ "node": "Apify TikTok Trends", "type": "main", "index": 0 }]] },
+    "Apify TikTok Trends": { "main": [[{ "node": "LLM Rank Trends", "type": "main", "index": 0 }]] },
+    "LLM Rank Trends": { "main": [[{ "node": "Parse + Filter >=60", "type": "main", "index": 0 }]] },
+    "Parse + Filter >=60": { "main": [[{ "node": "Write Trends to Supabase", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "UTC" }
+}

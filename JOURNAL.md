@@ -1,5 +1,42 @@
 # JOURNAL
 
+## [SPRINT-3] 2026-06-09 — Content pipeline as code (n8n workflows)
+### What changed
+- workflows/: 01-trend-discovery (Apify→LLM rank→Supabase), 02-script-copy (LLM script→Compliance Gate CLI→IF block/save + Telegram HIGH alert), 03-image-generation (Nano Banana, 3-6 varied prompts, randomized compositions), 04-video-assembly (voice rotation→video_assembly.sh→ai_labeled/c2pa flags), 05-posting-approval (Warming Guard→Telegram sendAndWait approval→Upload-Post with is_ai_generated→mark posted).
+- scripts/n8n_deploy.py: upsert-by-name via n8n REST API, refuses inline secrets, --activate behind HUMAN-CHECKPOINT.
+- src/compliance/cli.py: stdin JSON → verdict JSON, exit 2 on block (n8n Execute Command integration).
+- scripts/video_assembly.sh: edge-tts (rate/pitch jitter) + FFmpeg Ken Burns 1080x1920 + burned "#ad" and "AI-generated" overlays.
+- tests/test_workflows.py: 8 structural/guardrail tests.
+### Decisions
+- Credentials exist only as n8n name-references ("Supabase Service Auth" etc.) bound in the instance — JSON stays clean for git (enforced by test + deploy script).
+- Compliance gate runs BEFORE any asset spend: 02 saves drafts only after PASS; HIGH routes to Telegram alert, never to image gen.
+- Warming guard hard-throws at >3 posts/day or <2h spacing — code-level enforcement of the account-warming rule.
+### Metrics
+- tests: 51/51 passed (compliance 14, attribution 14, offers 15, workflows 8)
+- CLI smoke: HIGH creative → blocked, exit 2 ✓
+### Open questions / TODO
+- DoD "end-to-end draft video in staging queue" requires live n8n → pending VPS (HUMAN-CHECKPOINT).
+- n8n credential setup at deploy: Apify, OpenRouter, Gemini, Supabase, Telegram, Upload-Post (HUMAN-CHECKPOINT).
+- Verify Upload-Post API field names against their current docs at integration time.
+### Verification
+- gates: [tests ✓] [workflow integrity ✓] [n8n import dry-run pending VPS]
+
+## [SPRINT-2] 2026-06-09 — Offer-Scoring (partial: feed + rubric)
+### What changed
+- src/offers/feed_clickbank.py: Marketplace XML v2 ingester (nested-category walk, fail-soft FeedUnavailable for schema drift/moved feed, provenance=feed, cookie_days=60 manual constant).
+- src/offers/scorer.py: 6-factor weighted rubric + all kill criteria from ARCHITECTURE.md (refund>15%, gravity<8 CB-only, gravity>150 saturation guard, HIGH claim-risk, Net-90, holdback>60d, cookie<14d, SaaS downgrade-reset, DS24 no-history). rank_candidates() for shortlists.
+- tests/test_offers.py (15 tests, feed fixture + kill/rank assertions).
+### Decisions
+- Missing metric data scores 0, never average — conservative bias incentivizes provenance completion before approving offers.
+- Feed URL responds (HTTP OK) but binary content unverifiable from sandbox; ingester has built-in source-health failure mode per risk register.
+### Metrics
+- tests: 43/43 passed (compliance 14 + attribution 14 + offers 15)
+### Open questions / TODO
+- Remaining Sprint 2: Digistore24 marketplace scraper + SaaS program-page ingester (semi-manual) — needs live page structures; deferred until KC has network accounts (HUMAN-CHECKPOINT: account signups).
+- Run live feed pull on VPS at deploy to verify gravity/Avg$ fields present.
+### Verification
+- gates: [tests ✓] [smoke ✓] [feed live-pull pending VPS]
+
 ## [SPRINT-1] 2026-06-09 — Attribution layer
 ### What changed
 - src/attribution/: core.py (subID gen + ClickBank/DS24/SaaS redirect builders), postbacks.py (DS24 sha512 IPN verify + ClickBank INS parse, money in cents), server.py (stdlib HTTP service: /health, /v/{id} 302 + async click log queue, /postback/* ingesters).

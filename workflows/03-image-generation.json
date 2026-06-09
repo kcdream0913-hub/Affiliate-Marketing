@@ -1,0 +1,66 @@
+{
+  "name": "03 Image Generation (Nano Banana)",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "When Called",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build 3-6 varied prompts from the approved draft (variation logic: composition,\n// lighting, angle randomized per run — anti perceptual-hash).\nconst draft = $json;\nconst comps = ['close-up product hero shot', 'lifestyle context scene', 'flat-lay top-down', 'hands-on demonstration', 'minimal studio backdrop', 'dramatic side lighting'];\nconst n = 3 + Math.floor(Math.random() * 3);\nconst picked = comps.sort(() => Math.random() - 0.5).slice(0, n);\nreturn picked.map((style, i) => ({ json: { idx: i, prompt: `${style} of ${draft.product_name || 'the product'}, vertical 9:16 composition, photorealistic, no text, no watermarks, no human faces`, video_id: draft.video_id } }));"
+      },
+      "name": "Build Varied Prompts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({contents: [{parts: [{text: $json.prompt}]}], generationConfig: {responseModalities: ['IMAGE']}}) }}",
+        "options": { "timeout": 90000 }
+      },
+      "name": "Nano Banana Generate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": { "httpQueryAuth": { "name": "Gemini API Key Query" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract base64 image -> binary for the assembly step. C2PA/SynthID metadata\n// from Gemini is preserved by writing bytes verbatim (never re-encode here).\nconst part = $json.candidates?.[0]?.content?.parts?.find(p => p.inlineData);\nif (!part) { throw new Error('no image in response'); }\nconst idx = $('Build Varied Prompts').item.json.idx;\nreturn [{ json: { idx, video_id: $('Build Varied Prompts').item.json.video_id }, binary: { data: { data: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png', fileName: `still_${idx}.png` } } }];"
+      },
+      "name": "Extract Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/data/media/{{ $json.video_id }}/still_{{ $json.idx }}.png",
+        "dataPropertyName": "data",
+        "options": { "append": false }
+      },
+      "name": "Write Still to Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [880, 0]
+    }
+  ],
+  "connections": {
+    "When Called": { "main": [[{ "node": "Build Varied Prompts", "type": "main", "index": 0 }]] },
+    "Build Varied Prompts": { "main": [[{ "node": "Nano Banana Generate", "type": "main", "index": 0 }]] },
+    "Nano Banana Generate": { "main": [[{ "node": "Extract Image", "type": "main", "index": 0 }]] },
+    "Extract Image": { "main": [[{ "node": "Write Still to Disk", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "UTC" }
+}
