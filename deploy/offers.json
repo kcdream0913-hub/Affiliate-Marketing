@@ -1,0 +1,7 @@
+{
+  "_comment": "Routing map: video_id -> network + link params. Replace samples after Sprint 2 offer approval (HUMAN-CHECKPOINT).",
+  "0b6c9c4e-8a1d-4f3a-9d2e-7c5b4a3f2e1d": {
+    "network": "digistore24",
+    "params": {"product_id": "12345", "affiliate_id": "KCaff"}
+  }
+}

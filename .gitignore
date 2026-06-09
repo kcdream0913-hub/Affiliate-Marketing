@@ -1,0 +1,25 @@
+# secrets — NEVER commit credentials (HUMAN-CHECKPOINT rule)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+venv/
+.venv/
+
+# os/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# local uploads / scratch
+*.zip
+node_modules/

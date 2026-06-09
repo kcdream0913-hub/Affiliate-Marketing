@@ -1,0 +1,9 @@
+# Caddy auto-TLS for both hosts. DOMAIN comes from .env via compose.
+n8n.{$DOMAIN} {
+    reverse_proxy n8n:5678
+}
+
+go.{$DOMAIN} {
+    reverse_proxy attribution:8080
+    header /v/* Cache-Control "no-store"
+}
