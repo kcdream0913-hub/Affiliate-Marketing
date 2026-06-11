@@ -37,6 +37,9 @@ services:
       GENERIC_TIMEZONE: UTC
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       NODE_OPTIONS: "--max-old-space-size=768"   # cap node RAM; FFmpeg writes to disk
+      # passed through to workflow expressions ($env.*)
+      SUPABASE_URL: ${SUPABASE_URL}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
     volumes:
       - n8n_data:/home/node/.n8n
       - media_work:/data/media          # FFmpeg/edge-tts scratch (disk, not RAM)

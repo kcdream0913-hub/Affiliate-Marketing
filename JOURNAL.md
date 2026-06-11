@@ -1,5 +1,56 @@
 # JOURNAL
 
+## [DEPLOY-1] 2026-06-09 — Live Supabase + deployment guide
+### What changed
+- Created Supabase project `affiliate-pipeline` (ref ecvmubsvtbranzwviepp, us-east-1, free tier $0 — cost confirmed).
+- Applied 001_initial_schema live: 8 tables, all RLS-enabled, 7 indexes. Verified via list_tables.
+- docs/DEPLOYMENT.md: full HUMAN-CHECKPOINT runbook (domain, Hetzner CPX11 + DNS, server bootstrap, .env table, API-key matrix, n8n credential names, network postback config, go-live order).
+- deploy/.env.example: real SUPABASE_URL filled in.
+### Decisions
+- New dedicated project over reusing paused "Health App" (KC choice); us-east-1 to pair with Hetzner Ashburn.
+- Service-role key intentionally NOT stored anywhere in repo/chat — KC pulls from dashboard into VPS .env only.
+### Metrics
+- migration: applied clean, 8/8 tables, RLS 8/8 ✓
+### Open questions / TODO
+- KC: domain + Hetzner + accounts per DEPLOYMENT.md §1-7.
+- Sprint 6 (observability crons: reconciliation nightly, bandit update, keep-alive ping) once VPS lives.
+### Verification
+- gates: [migration applied ✓] [tables verified ✓]
+
+## [SPRINT-5] 2026-06-09 — Earnings-Reconciliation
+### What changed
+- src/reconciliation/pollers.py: normalized earnings pollers — ClickBank Analytics (DEV:CLERK auth), Digistore24 listTransactions (refund split), Impact Partner API (Basic auth, 45-day cap enforced), PartnerStack rewards (Bearer, cents→dollars, recurring tagging), Amazon CSV import (column-drift tolerant). HTTP injectable for mocked tests.
+- src/reconciliation/reconcile.py: conversions-vs-network-truth reconciler; >15% gap → leakage flag + bandit-kill freeze (Rec. 6).
+- tests/test_reconciliation.py: 9 mocked integration + fixture tests.
+### Decisions
+- Pollers normalize to one earnings-row shape; raw payloads kept in `raw` for audit.
+- Leakage freeze is automatic and per-report — n8n nightly cron posts rep.summary() to Telegram.
+### Metrics
+- tests: 72/72 passed (compliance 14, attribution 14, offers 15, workflows 8, bandit 12, reconciliation 9)
+### Open questions / TODO
+- HUMAN-CHECKPOINT: live API keys (ClickBank Clerk, DS24, Impact SID/token, PartnerStack) at Sprint 5 deploy.
+- Field-name verification against live API responses on first real pull (esp. PartnerStack item shape).
+- n8n nightly reconciliation workflow → add with Sprint 6 observability batch.
+### Verification
+- gates: [tests ✓ mocked] [live poller run pending keys]
+
+## [SPRINT-4] 2026-06-09 — Bandit-Allocator (Thompson Sampling)
+### What changed
+- src/bandit/thompson.py: Arm (Beta posterior, α=β=1 priors, optional evidence decay for non-stationarity), BanditState (value-weighted Thompson allocation, cadence_plan, evaluate_kills with hard exploration floor ≥1,000 clicks OR ≥30 conversions, hard_kill bypass for compliance/refund flags, bandit_state row round-trip).
+- tests/test_bandit.py: 12 sim tests (floor enforcement, noise-kill guard, convergence, rookie exploration share, killed-arm exclusion, persistence).
+### Decisions
+- Allocation = value-proportional (mean of TS draws × refund-adjusted commission), not winner-take-all probability-of-best: smoother cadence plans at 1-3 posts/day and avoids starving arms the floor still protects.
+- Kill metric = refund-adjusted revenue-per-1k-views vs $5 RPM threshold (placeholder — replace with measured breakeven once attribution data flows).
+- Decay default 0.99 hedges non-stationarity (viral spikes); tests pin decay=1.0 for exact math.
+### Metrics
+- tests: 63/63 passed (compliance 14, attribution 14, offers 15, workflows 8, bandit 12)
+- Convergence sim: 2% arm captures ~73% allocation vs 0.5% arm after 4k clicks/arm ✓; zero kills below floor ✓
+### Open questions / TODO
+- Wire bandit into n8n (Sprint 4b): nightly cron → pull clicks/conversions from Supabase → update bandit_state → write cadence plan; needs live Supabase.
+- RPM kill threshold needs real breakeven data (image cost × stills/video ÷ views).
+### Verification
+- gates: [tests ✓] [sim ✓] [n8n wiring pending Supabase/VPS]
+
 ## [SPRINT-3] 2026-06-09 — Content pipeline as code (n8n workflows)
 ### What changed
 - workflows/: 01-trend-discovery (Apify→LLM rank→Supabase), 02-script-copy (LLM script→Compliance Gate CLI→IF block/save + Telegram HIGH alert), 03-image-generation (Nano Banana, 3-6 varied prompts, randomized compositions), 04-video-assembly (voice rotation→video_assembly.sh→ai_labeled/c2pa flags), 05-posting-approval (Warming Guard→Telegram sendAndWait approval→Upload-Post with is_ai_generated→mark posted).
