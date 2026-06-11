@@ -6,7 +6,10 @@
       "name": "When Called",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -15,7 +18,10 @@
       "name": "Pick Voice",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -24,7 +30,10 @@
       "name": "Write Script File",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [440, 0]
+      "position": [
+        440,
+        0
+      ]
     },
     {
       "parameters": {
@@ -33,14 +42,17 @@
       "name": "Assemble Video",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     },
     {
       "parameters": {
         "method": "PATCH",
         "url": "={{ $env.SUPABASE_URL }}/rest/v1/videos?id=eq.{{ $json.video_id }}",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpCustomAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ai_labeled: true, c2pa_present: true, status: 'approved'}) }}",
@@ -49,15 +61,65 @@
       "name": "Mark Assembled",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 0],
-      "credentials": { "httpHeaderAuth": { "name": "Supabase Service Auth" } }
+      "position": [
+        880,
+        0
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "name": "Supabase Service Auth"
+        }
+      }
     }
   ],
   "connections": {
-    "When Called": { "main": [[{ "node": "Pick Voice", "type": "main", "index": 0 }]] },
-    "Pick Voice": { "main": [[{ "node": "Write Script File", "type": "main", "index": 0 }]] },
-    "Write Script File": { "main": [[{ "node": "Assemble Video", "type": "main", "index": 0 }]] },
-    "Assemble Video": { "main": [[{ "node": "Mark Assembled", "type": "main", "index": 0 }]] }
+    "When Called": {
+      "main": [
+        [
+          {
+            "node": "Pick Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Voice": {
+      "main": [
+        [
+          {
+            "node": "Write Script File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Script File": {
+      "main": [
+        [
+          {
+            "node": "Assemble Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble Video": {
+      "main": [
+        [
+          {
+            "node": "Mark Assembled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1", "timezone": "UTC" }
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC"
+  }
 }

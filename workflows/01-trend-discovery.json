@@ -3,12 +3,22 @@
   "nodes": [
     {
       "parameters": {
-        "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] }
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
       },
       "name": "Every 6h",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -16,13 +26,22 @@
         "url": "https://api.apify.com/v2/acts/clockworks~tiktok-trend-scraper/run-sync-get-dataset-items",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "options": { "timeout": 120000 }
+        "options": {
+          "timeout": 120000
+        }
       },
       "name": "Apify TikTok Trends",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 0],
-      "credentials": { "httpHeaderAuth": { "name": "Apify Header Auth" } }
+      "position": [
+        220,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Apify Header Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -38,8 +57,15 @@
       "name": "LLM Rank Trends",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 0],
-      "credentials": { "httpHeaderAuth": { "name": "OpenRouter Header Auth" } }
+      "position": [
+        440,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "OpenRouter Header Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -48,14 +74,17 @@
       "name": "Parse + Filter >=60",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "={{ $env.SUPABASE_URL }}/rest/v1/agent_journal",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "genericAuthType": "httpCustomAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({sprint: 'live', agent: 'trend-discovery', action: 'trend_ranked', decision: $json.theme, metric: $json}) }}",
@@ -64,15 +93,65 @@
       "name": "Write Trends to Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 0],
-      "credentials": { "httpHeaderAuth": { "name": "Supabase Service Auth" } }
+      "position": [
+        880,
+        0
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "name": "Supabase Service Auth"
+        }
+      }
     }
   ],
   "connections": {
-    "Every 6h": { "main": [[{ "node": "Apify TikTok Trends", "type": "main", "index": 0 }]] },
-    "Apify TikTok Trends": { "main": [[{ "node": "LLM Rank Trends", "type": "main", "index": 0 }]] },
-    "LLM Rank Trends": { "main": [[{ "node": "Parse + Filter >=60", "type": "main", "index": 0 }]] },
-    "Parse + Filter >=60": { "main": [[{ "node": "Write Trends to Supabase", "type": "main", "index": 0 }]] }
+    "Every 6h": {
+      "main": [
+        [
+          {
+            "node": "Apify TikTok Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify TikTok Trends": {
+      "main": [
+        [
+          {
+            "node": "LLM Rank Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Rank Trends": {
+      "main": [
+        [
+          {
+            "node": "Parse + Filter >=60",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse + Filter >=60": {
+      "main": [
+        [
+          {
+            "node": "Write Trends to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1", "timezone": "UTC" }
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC"
+  }
 }
