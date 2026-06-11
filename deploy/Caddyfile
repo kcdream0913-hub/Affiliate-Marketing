@@ -4,6 +4,14 @@ n8n.{$DOMAIN} {
 }
 
 go.{$DOMAIN} {
-    reverse_proxy attribution:8080
+    # Only click + postback + health routes are public; /compliance and
+    # /assemble are internal (n8n reaches them directly on the docker network).
+    @public path /v/* /postback/* /health
+    handle @public {
+        reverse_proxy attribution:8080
+    }
+    handle {
+        respond "not found" 404
+    }
     header /v/* Cache-Control "no-store"
 }

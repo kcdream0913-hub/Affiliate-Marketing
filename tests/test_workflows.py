@@ -76,10 +76,17 @@ def test_posting_workflow_has_approval_and_warming():
 def test_assembly_workflow_burns_label_and_marks_c2pa():
     wf = _load_all()["04-video-assembly.json"]
     blob = json.dumps(wf)
-    assert "video_assembly.sh" in blob
+    assert "attribution:8080/assemble" in blob  # HTTP endpoint runs video_assembly.sh
     assert "ai_labeled" in blob and "c2pa_present" in blob
+
+
+def test_no_execute_command_nodes_anywhere():
+    """n8n v2 removed n8n-nodes-base.executeCommand — regression guard."""
+    for name, wf in _load_all().items():
+        for n in wf["nodes"]:
+            assert n["type"] != "n8n-nodes-base.executeCommand", f"{name}/{n['name']}"
 
 
 def test_caption_always_ad_prefixed_in_script_workflow():
     blob = json.dumps(_load_all()["02-script-copy.json"])
-    assert "startsWith('#ad')" in blob or "startsWith(\\\"#ad\\\")" in blob or "#ad " in blob
+    assert "startsWith('#ad')" in blob or "startsWith(\\"#ad\\")" in blob or "#ad " in blob

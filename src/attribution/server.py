@@ -20,6 +20,7 @@ import os
 import queue
 import threading
 import urllib.request
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -110,6 +111,57 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
+        if self.path == "/compliance/check":
+            # Internal endpoint (not proxied by Caddy): n8n calls this instead of
+            # an Execute Command node (removed in n8n v2; container lacks python).
+            try:
+                payload = json.loads(body or b"{}")
+            except json.JSONDecodeError:
+                return self._send(400, b"bad json")
+            from src.compliance import gate  # lazy: keeps redirect path lean
+            result = gate(
+                script=payload.get("script", ""),
+                caption=payload.get("caption", ""),
+                offer_category=payload.get("offer_category", ""),
+                platform_toggle_set=bool(payload.get("platform_toggle_set", False)),
+                onscreen_text=payload.get("onscreen_text", ""),
+                c2pa_present=bool(payload.get("c2pa_present", False)),
+                is_realistic_ai_media=bool(payload.get("is_realistic_ai_media", True)),
+            )
+            out = json.dumps({
+                "verdict": result.verdict, "blocked": result.blocked,
+                "matched_rules": result.matched_rules, "notes": result.notes,
+                "escalated": result.escalated,
+            }).encode()
+            return self._send(200, out)
+        if self.path == "/assemble":
+            # Internal endpoint: writes script.txt and runs FFmpeg/edge-tts here
+            # (this container has them; n8n's does not).
+            import re as _re
+            import subprocess
+            try:
+                payload = json.loads(body or b"{}")
+                vid = str(uuid.UUID(payload["video_id"]))
+            except Exception:
+                return self._send(400, b"bad payload (need valid video_id)")
+            voice = payload.get("voice", "en-US-JennyNeural")
+            if not _re.fullmatch(r"[A-Za-z][A-Za-z0-9-]{2,60}", voice):
+                return self._send(400, b"bad voice")
+            workdir = f"/data/media/{vid}"
+            os.makedirs(workdir, exist_ok=True)
+            with open(f"{workdir}/script.txt", "w") as f:
+                f.write(payload.get("script", ""))
+            proc = subprocess.run(
+                ["bash", "/app/scripts/video_assembly.sh", workdir,
+                 f"{workdir}/script.txt", voice, f"{workdir}/final.mp4"],
+                capture_output=True, text=True, timeout=600,
+            )
+            out = json.dumps({
+                "ok": proc.returncode == 0,
+                "output": (proc.stdout + proc.stderr)[-1500:],
+                "video_path": f"{workdir}/final.mp4",
+            }).encode()
+            return self._send(200 if proc.returncode == 0 else 500, out)
         if self.path == "/postback/digistore24":
             params = {k: v[0] for k, v in parse_qs(body.decode(errors="replace")).items()}
             if not ds24_signature_valid(params, os.environ.get("DS24_IPN_PASSPHRASE", "")):

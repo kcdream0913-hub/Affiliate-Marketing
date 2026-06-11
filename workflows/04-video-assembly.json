@@ -25,23 +25,18 @@
     },
     {
       "parameters": {
-        "command": "=mkdir -p /data/media/{{ $json.video_id }} && printf '%s' '{{ ($json.script || \"\").replace(/'/g, \"'\\\\''\") }}' > /data/media/{{ $json.video_id }}/script.txt"
-      },
-      "name": "Write Script File",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        440,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "command": "=cd /app && bash scripts/video_assembly.sh /data/media/{{ $json.video_id }} /data/media/{{ $json.video_id }}/script.txt {{ $json.voice }} /data/media/{{ $json.video_id }}/final.mp4"
+        "method": "POST",
+        "url": "http://attribution:8080/assemble",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({video_id: $json.video_id, script: $json.script, voice: $json.voice}) }}",
+        "options": {
+          "timeout": 600000
+        }
       },
       "name": "Assemble Video",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         660,
         0
@@ -85,17 +80,6 @@
       ]
     },
     "Pick Voice": {
-      "main": [
-        [
-          {
-            "node": "Write Script File",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Write Script File": {
       "main": [
         [
           {

@@ -6,7 +6,10 @@
       "name": "Run Manually",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -22,18 +25,32 @@
       "name": "Test OpenRouter",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 0],
-      "credentials": { "httpHeaderAuth": { "name": "OpenRouter Header Auth" } }
+      "position": [
+        220,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "OpenRouter Header Auth"
+        }
+      }
     },
     {
       "parameters": {
-        "command": "cd /app && echo '{\"script\":\"Make $10k/month while you sleep\",\"caption\":\"link in bio\"}' | python3 -m src.compliance.cli"
+        "method": "POST",
+        "url": "http://attribution:8080/compliance/check",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({script: 'Make $10k/month while you sleep', caption: 'link in bio'}) }}",
+        "options": {}
       },
       "name": "Test Compliance Gate",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [440, 0],
-      "continueOnFail": true
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ]
     },
     {
       "parameters": {
@@ -41,32 +58,95 @@
         "url": "={{ $env.SUPABASE_URL }}/rest/v1/offers?select=id&limit=1",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpCustomAuth",
-        "options": { "response": { "response": { "fullResponse": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
       },
       "name": "Test Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [660, 0],
-      "credentials": { "httpCustomAuth": { "name": "Supabase Service Auth" } }
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "name": "Supabase Service Auth"
+        }
+      }
     },
     {
       "parameters": {
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
-        "text": "=✅ SMOKE TEST\nOpenRouter: {{ $('Test OpenRouter').first().json.choices[0].message.content }}\nCompliance gate blocked HIGH creative: {{ JSON.parse($('Test Compliance Gate').first().json.stdout || '{}').blocked }}\nSupabase REST: HTTP {{ $('Test Supabase').first().json.statusCode }}\nTelegram: you are reading this.\nAll four integrations verified.",
+        "text": "=✅ SMOKE TEST\nOpenRouter: {{ $('Test OpenRouter').first().json.choices[0].message.content }}\nCompliance gate blocked HIGH creative: {{ $('Test Compliance Gate').first().json.blocked }}\nSupabase REST: HTTP {{ $('Test Supabase').first().json.statusCode }}\nTelegram: you are reading this.\nAll four integrations verified.",
         "additionalFields": {}
       },
       "name": "Report via Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [880, 0],
-      "credentials": { "telegramApi": { "name": "Telegram Bot" } }
+      "position": [
+        880,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "name": "Telegram Bot"
+        }
+      }
     }
   ],
   "connections": {
-    "Run Manually": { "main": [[{ "node": "Test OpenRouter", "type": "main", "index": 0 }]] },
-    "Test OpenRouter": { "main": [[{ "node": "Test Compliance Gate", "type": "main", "index": 0 }]] },
-    "Test Compliance Gate": { "main": [[{ "node": "Test Supabase", "type": "main", "index": 0 }]] },
-    "Test Supabase": { "main": [[{ "node": "Report via Telegram", "type": "main", "index": 0 }]] }
+    "Run Manually": {
+      "main": [
+        [
+          {
+            "node": "Test OpenRouter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test OpenRouter": {
+      "main": [
+        [
+          {
+            "node": "Test Compliance Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Compliance Gate": {
+      "main": [
+        [
+          {
+            "node": "Test Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Supabase": {
+      "main": [
+        [
+          {
+            "node": "Report via Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1", "timezone": "UTC" }
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC"
+  }
 }

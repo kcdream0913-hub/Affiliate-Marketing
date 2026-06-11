@@ -70,16 +70,20 @@
     },
     {
       "parameters": {
-        "command": "cd /app && echo '{{ JSON.stringify($json).replace(/'/g, \"'\\\\''\") }}' | python3 -m src.compliance.cli"
+        "method": "POST",
+        "url": "http://attribution:8080/compliance/check",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
       },
       "name": "Compliance Gate",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         880,
         0
-      ],
-      "continueOnFail": true
+      ]
     },
     {
       "parameters": {
@@ -91,7 +95,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ JSON.parse($json.stdout || '{}').blocked }}",
+              "leftValue": "={{ $json.blocked }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -137,7 +141,7 @@
     {
       "parameters": {
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
-        "text": "=🚫 COMPLIANCE BLOCK (HIGH)\nRules: {{ JSON.parse($json.stdout || '{}').matched_rules }}\nScript draft halted before any asset spend. Human review required.",
+        "text": "=🚫 COMPLIANCE BLOCK (HIGH)\nRules: {{ $('Compliance Gate').first().json.matched_rules }}\nScript draft halted before any asset spend. Human review required.",
         "additionalFields": {}
       },
       "name": "Alert HIGH Block",
